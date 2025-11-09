@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Calculator — HTML / CSS / JS</title>
+  <style>
+    :root{
+      --bg:#0f1724;
+      --panel:#0b1220;
+      --accent:#7c3aed;
+      --muted:#93c5fd;
+      --glass: rgba(255,255,255,0.03);
+      --btn: #0f1724;
+      --shadow: rgba(2,6,23,0.6);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%;margin:0;background:linear-gradient(180deg,#071028 0%, #08122a 100%);color:#e6eef8}
+    .wrap{min-height:100%;display:flex;align-items:center;justify-content:center;padding:36px}
+
+    .calculator{
+      width:360px;
+      max-width:95vw;
+      background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+      border-radius:16px;
+      padding:18px;
+      box-shadow: 0 10px 30px var(--shadow), inset 0 1px rgba(255,255,255,0.02);
+      border:1px solid rgba(255,255,255,0.03);
+    }
+
+    .display{
+      background:var(--glass);
+      border-radius:12px;
+      padding:12px 14px;
+      margin-bottom:12px;
+      min-height:76px;
+      display:flex;flex-direction:column;justify-content:center;align-items:flex-end;
+      gap:6px;
+    }
+    .expr{font-size:18px;color:#cfe7ff;opacity:0.9;word-break:break-all}
+    .result{font-size:28px;font-weight:600;color:var(--accent)}
+    .result.small{font-size:20px}
+
+    .keys{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+    button.key{
+      padding:14px;border-radius:10px;border:0;background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.06));
+      font-size:18px;color:#eaf6ff;cursor:pointer;outline:none;box-shadow:0 6px 14px rgba(2,6,23,0.5);
+      transition:transform .08s ease, box-shadow .08s ease;
+    }
+    button.key:active{transform:translateY(2px)}
+
+    .key.op{background:linear-gradient(180deg, rgba(124,58,237,0.15), rgba(124,58,237,0.05));color:var(--accent);font-weight:600}
+    .key.wide{grid-column:span 2}
+    .key.kill{background:linear-gradient(180deg, rgba(239,68,68,0.12), rgba(239,68,68,0.04));color:#ffb4b4}
+
+    .hint{margin-top:10px;font-size:12px;color:#9fb8df;opacity:0.9}
+
+    /* responsive tweaks */
+    @media (max-width:420px){
+      .calculator{padding:12px}
+      .display{min-height:66px}
+      .result{font-size:24px}
+      .expr{font-size:16px}
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="calculator" role="application" aria-label="Calculator">
+      <div class="display" id="display">
+        <div class="expr" id="expr" aria-live="polite">0</div>
+        <div class="result" id="result">0</div>
+      </div>
+
+      <div class="keys">
+        <button class="key kill" data-action="clear">C</button>
+        <button class="key" data-action="back">⌫</button>
+        <button class="key" data-value="(">(</button>
+        <button class="key" data-value=")">)</button>
+
+        <button class="key" data-value="7">7</button>
+        <button class="key" data-value="8">8</button>
+        <button class="key" data-value="9">9</button>
+        <button class="key op" data-value="÷">÷</button>
+
+        <button class="key" data-value="4">4</button>
+        <button class="key" data-value="5">5</button>
+        <button class="key" data-value="6">6</button>
+        <button class="key op" data-value="×">×</button>
+
+        <button class="key" data-value="1">1</button>
+        <button class="key" data-value="2">2</button>
+        <button class="key" data-value="3">3</button>
+        <button class="key op" data-value="-">−</button>
+
+        <button class="key" data-value="0">0</button>
+        <button class="key" data-value=".">.</button>
+        <button class="key" data-action="equals" class="equals">=</button>
+        <button class="key op" data-value="+">+</button>
+      </div>
+
+      <div class="hint">
+        Keyboard: numbers, + - * / , Enter = evaluate, Backspace delete, Esc clear.
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function(){
+      const exprEl = document.getElementById('expr');
+      const resultEl = document.getElementById('result');
+      const keys = document.querySelectorAll('button.key');
+
+      let expression = '';
+
+      function render(){
+        exprEl.textContent = expression || '0';
+        const preview = compute(expression);
+        resultEl.textContent = (preview === null) ? 'Error' : (preview === '' ? '0' : preview);
+      }
+
+      function compute(input){
+        if(!input) return '';
+        const normalized = input.replace(/×/g,'*').replace(/÷/g,'/').replace(/−/g,'-');
+        if(!/^[0-9+\-*/(). \t]+$/.test(normalized)) return null;
+        try{
+          if(normalized.length > 200) return null;
+          const value = Function('return ('+normalized+')')();
+          if(typeof value === 'number' && isFinite(value)){
+            return Number.isInteger(value) ? String(value) : String(parseFloat(value.toFixed(12)).toString());
+          }
+          return null;
+        }catch(e){
+          return null;
+        }
+      }
+
+      function pressValue(v){
+        const operators = ['+','-','*','/','.'];
+        const last = expression.slice(-1);
+        if(v === '×') v = '×';
+        if(v === '÷') v = '÷';
+        if(operators.includes(v) && operators.includes(last) && !(v==='-' && last==='(')){
+          if(v === '.' && last === '.') return;
+          expression = expression.slice(0,-1) + v;
+        } else {
+          expression += v;
+        }
+        render();
+      }
+
+      function clearAll(){ expression = ''; render(); }
+      function backspace(){ expression = expression.slice(0,-1); render(); }
+      function evaluateNow(){
+        const out = compute(expression);
+        if(out === null) { resultEl.textContent = 'Error'; return; }
+        expression = String(out);
+        render();
+      }
+
+      keys.forEach(k=>{
+        k.addEventListener('click', ()=>{
+          const v = k.getAttribute('data-value');
+          const action = k.getAttribute('data-action');
+          if(action === 'clear') return clearAll();
+          if(action === 'back') return backspace();
+          if(action === 'equals') return evaluateNow();
+          if(v !== null) return pressValue(v);
+        });
+      });
+
+      window.addEventListener('keydown', (e)=>{
+        if(e.key >= '0' && e.key <= '9') { pressValue(e.key); e.preventDefault(); return; }
+        if(e.key === 'Enter' || e.key === '='){ evaluateNow(); e.preventDefault(); return; }
+        if(e.key === 'Backspace'){ backspace(); e.preventDefault(); return; }
+        if(e.key === 'Escape'){ clearAll(); e.preventDefault(); return; }
+        if(e.key === '.') { pressValue('.'); e.preventDefault(); return; }
+        if(e.key === '+' || e.key === '-') { pressValue(e.key); e.preventDefault(); return; }
+        if(e.key === '*' || e.key === '/') { 
+          if(e.key === '*') pressValue('×'); else pressValue('÷');
+          e.preventDefault(); return;
+        }
+        if(e.key === '(' || e.key === ')'){ pressValue(e.key); e.preventDefault(); return; }
+      });
+      render();
+      document.body.addEventListener('keyup', (e)=>{
+        if(e.key === 'Tab') document.activeElement.blur();
+      });
+
+    })();
+  </script>
+</body>
+</html>
